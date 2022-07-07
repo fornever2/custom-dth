@@ -56,6 +56,7 @@ def parse(String description) {
 			event.value = event.value/getPowerDiv()
 			event.unit = "W"
 		} else if (event.name== "energy") {
+			// event.value = event.value * 10	// Tuya plug gives 1/10 values. So, need to multiply 10.
 			event.value = event.value/getEnergyDiv()
 			event.unit = "kWh"
 		}
@@ -80,11 +81,8 @@ def parse(String description) {
 			}
 			else if (it.value && it.clusterInt == zigbee.SIMPLE_METERING_CLUSTER && it.attrInt == ATTRIBUTE_READING_INFO_SET) {
 				log.debug "energy"
-				map.name = "energy"
-				map.value = zigbee.convertHexToInt(it.value)/getEnergyDiv()
-				map.unit = "kWh"
 
-				def currentEnergy = zigbee.convertHexToInt(it.value)
+				def currentEnergy = zigbee.convertHexToInt(it.value) * 10 // Tuya plug gives 1/10 values. So, need to multiply 10.
 				def currentPowerConsumption = device.currentState("powerConsumption")?.value
 				Map previousMap = currentPowerConsumption ? new groovy.json.JsonSlurper().parseText(currentPowerConsumption) : [:]
 				def deltaEnergy = calculateDelta (currentEnergy, previousMap)
@@ -92,6 +90,10 @@ def parse(String description) {
 				reportMap["energy"] = currentEnergy
 				reportMap["deltaEnergy"] = deltaEnergy 
 				sendEvent("name": "powerConsumption", "value": reportMap.encodeAsJSON(), displayed: false)
+				
+				map.name = "energy"
+				map.value = currentEnergy/getEnergyDiv()
+				map.unit = "kWh"
 			}
 
 			if (map) {
